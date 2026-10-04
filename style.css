@@ -1,4 +1,4 @@
-/* =========================================================
+﻿/* =========================================================
    TOKENS
    ========================================================= */
 :root {
@@ -51,6 +51,18 @@ body {
   z-index: 0;
   opacity: 0.025;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* =========================================================
@@ -141,6 +153,54 @@ body {
 /* =========================================================
    FORM
    ========================================================= */
+.form-progress {
+  margin: 18px 0 0;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, #F8FBF8 0%, var(--paper) 100%);
+}
+
+.progress-copy {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.progress-label {
+  font-family: var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 11px;
+}
+
+#form-progress-value {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--pine-deep);
+}
+
+.progress-track {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(33, 89, 74, 0.12);
+  overflow: hidden;
+}
+
+#form-progress-bar {
+  display: block;
+  width: 0%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--pine) 0%, var(--sage) 100%);
+  transition: width 0.25s ease;
+}
+
 fieldset.group {
   border: none;
   margin: 0;
@@ -202,7 +262,7 @@ select {
   border-radius: var(--radius-sm);
   padding: 11px 12px;
   width: 100%;
-  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   appearance: none;
 }
 
@@ -216,6 +276,14 @@ select {
 
 input:hover, select:hover { border-color: #B9C6B7; }
 
+input:focus-visible, select:focus-visible,
+.seg-btn:focus-visible,
+.submit-btn:focus-visible,
+.reset-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(33, 89, 74, 0.17);
+}
+
 input:focus, select:focus {
   outline: none;
   border-color: var(--pine);
@@ -223,7 +291,8 @@ input:focus, select:focus {
   box-shadow: 0 0 0 3px var(--pine-tint);
 }
 
-input:invalid:not(:placeholder-shown):not(:focus) {
+input:invalid:not(:placeholder-shown):not(:focus),
+select:invalid:not(:focus) {
   border-color: var(--coral);
 }
 
@@ -231,6 +300,12 @@ input:invalid:not(:placeholder-shown):not(:focus) {
 .field.field-error select {
   border-color: var(--coral);
   background: #FBEEEE;
+}
+
+.field.field-valid input,
+.field.field-valid select {
+  border-color: rgba(76, 154, 120, 0.8);
+  background: #F3F9F5;
 }
 
 .unit-input { position: relative; }
@@ -276,13 +351,15 @@ input:invalid:not(:placeholder-shown):not(:focus) {
   border-radius: var(--radius-sm);
   padding: 10px 8px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
 .seg-btn:hover { border-color: #B9C6B7; color: var(--ink); }
+.seg-btn:active { transform: translateY(1px); }
 .seg-btn.active {
   background: var(--pine);
   border-color: var(--pine);
   color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.18);
 }
 .seg-btn[data-value="Very High"].active { background: var(--coral); border-color: var(--coral); }
 .seg-btn[data-value="High"].active { background: #C97C3B; border-color: #C97C3B; }
@@ -294,18 +371,6 @@ input:invalid:not(:placeholder-shown):not(:focus) {
   justify-content: space-between;
   gap: 16px;
   padding-top: 20px;
-}
-
-.api-note {
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-  color: #90A096;
-  margin: 0;
-}
-.api-note code {
-  background: var(--paper-deep);
-  padding: 2px 5px;
-  border-radius: 4px;
 }
 
 .submit-btn {
@@ -322,12 +387,15 @@ input:invalid:not(:placeholder-shown):not(:focus) {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  transition: background 0.15s ease, transform 0.1s ease;
+  transition: background 0.15s ease, transform 0.1s ease, opacity 0.15s ease;
   white-space: nowrap;
 }
 .submit-btn:hover { background: var(--pine-deep); }
 .submit-btn:active { transform: scale(0.98); }
-.submit-btn:disabled { opacity: 0.75; cursor: progress; }
+.submit-btn:disabled {
+  opacity: 0.75;
+  cursor: progress;
+}
 
 .btn-spinner {
   display: none;
@@ -532,9 +600,14 @@ input:invalid:not(:placeholder-shown):not(:focus) {
   .segmented { grid-template-columns: repeat(2, 1fr); }
   .form-footer { flex-direction: column; align-items: stretch; gap: 14px; }
   .submit-btn { justify-content: center; }
-  .api-note { text-align: center; }
+  .progress-copy { flex-direction: column; align-items: flex-start; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }

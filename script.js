@@ -1,4 +1,4 @@
-(() => {
+﻿(() => {
   "use strict";
 
   const API_BASE = "https://mental-health-score-predictor-as7d.onrender.com";
@@ -7,6 +7,10 @@
   const submitBtn = document.getElementById("submit-btn");
   const resetBtn = document.getElementById("reset-btn");
   const errorRetryBtn = document.getElementById("error-retry-btn");
+
+  const progressValueEl = document.getElementById("form-progress-value");
+  const progressBarEl = document.getElementById("form-progress-bar");
+  const resultAnnouncer = document.getElementById("result-announcer");
 
   const stateIdle = document.getElementById("state-idle");
   const stateLoading = document.getElementById("state-loading");
@@ -20,17 +24,92 @@
   const errorLabelEl = document.getElementById("error-label");
   const errorCopyEl = document.getElementById("error-copy");
 
-  const GAUGE_ARC_LENGTH = 314; // approx pi * r(100)
+  const GAUGE_ARC_LENGTH = 314;
+  const requiredFields = () => [...form.querySelectorAll("[required]")];
 
-  // ---------------------------------------------------------
-  // Draw tick marks on both gauges (0..10, every 2 units)
-  // ---------------------------------------------------------
+  function fieldWrapper(input) {
+    return input.closest(".field");
+  }
+
+  function clearFieldError(input) {
+    const wrap = fieldWrapper(input);
+    if (!wrap) return;
+    wrap.classList.remove("field-error");
+    const msgEl = wrap.querySelector(".error-msg");
+    if (msgEl) msgEl.textContent = "";
+    if (input) {
+      input.setAttribute("aria-invalid", "false");
+    }
+    if (input && input.type === "hidden") {
+      input.closest(".field")?.classList.remove("field-error");
+    }
+  }
+
+  function setFieldError(input, message) {
+    const wrap = fieldWrapper(input);
+    if (!wrap) return;
+    wrap.classList.add("field-error");
+    const msgEl = wrap.querySelector(".error-msg");
+    if (msgEl) msgEl.textContent = message;
+    if (input) input.setAttribute("aria-invalid", "true");
+  }
+
+  function clearAllErrors() {
+    form.querySelectorAll(".field").forEach((f) => {
+      f.classList.remove("field-error", "field-valid");
+      const err = f.querySelector(".error-msg");
+      if (err) err.textContent = "";
+    });
+    form.querySelectorAll("[aria-invalid]").forEach((el) => el.setAttribute("aria-invalid", "false"));
+  }
+
+  function markValidField(input) {
+    const wrap = fieldWrapper(input);
+    if (!wrap) return;
+    wrap.classList.remove("field-error");
+    wrap.classList.add("field-valid");
+    input.setAttribute("aria-invalid", "false");
+  }
+
+  function isFieldComplete(input) {
+    if (!input) return false;
+    if (input.type === "hidden") {
+      return Boolean(input.value && input.value.trim() !== "");
+    }
+    const value = input.value.trim();
+    if (value === "") return false;
+    if (input.type === "number") {
+      return Number.isFinite(Number(value)) && input.checkValidity();
+    }
+    return input.checkValidity();
+  }
+
+  function updateFormProgress() {
+    const fields = requiredFields();
+    let complete = 0;
+    fields.forEach((field) => {
+      const wrap = fieldWrapper(field);
+      const isComplete = isFieldComplete(field);
+      if (wrap && isComplete) {
+        markValidField(field);
+      } else if (wrap && field.value !== "") {
+        wrap.classList.remove("field-valid");
+      }
+      if (isComplete) complete += 1;
+    });
+
+    const total = Math.max(fields.length, 1);
+    const percent = Math.round((complete / total) * 100);
+    progressValueEl.textContent = `${percent}%`;
+    progressBarEl.style.width = `${percent}%`;
+  }
+
   function drawTicks() {
     document.querySelectorAll(".gauge-ticks").forEach((g) => {
       g.innerHTML = "";
       const cx = 120, cy = 140, rOuter = 100, rInner = 90;
       for (let i = 0; i <= 10; i += 2) {
-        const angle = Math.PI - (i / 10) * Math.PI; // 180deg -> 0deg
+        const angle = Math.PI - (i / 10) * Math.PI;
         const x1 = cx + rOuter * Math.cos(angle);
         const y1 = cy - rOuter * Math.sin(angle);
         const x2 = cx + rInner * Math.cos(angle);
@@ -46,51 +125,32 @@
   }
   drawTicks();
 
-  // ---------------------------------------------------------
-  // Segmented control (stress_level) wiring
-  // ---------------------------------------------------------
   const segGroup = document.getElementById("stress_level_group");
   const stressHiddenInput = document.getElementById("stress_level");
+
+  function resetStressSelection() {
+    segGroup.querySelectorAll(".seg-btn").forEach((btn) => {
+      btn.classList.remove("active");
+      btn.setAttribute("aria-pressed", "false");
+    });
+    stressHiddenInput.value = "";
+    stressHiddenInput.setAttribute("aria-invalid", "false");
+  }
+
   segGroup.querySelectorAll(".seg-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
-      segGroup.querySelectorAll(".seg-btn").forEach((b) => b.classList.remove("active"));
+      segGroup.querySelectorAll(".seg-btn").forEach((b) => {
+        b.classList.remove("active");
+        b.setAttribute("aria-pressed", "false");
+      });
       btn.classList.add("active");
+      btn.setAttribute("aria-pressed", "true");
       stressHiddenInput.value = btn.dataset.value;
       clearFieldError(stressHiddenInput);
+      updateFormProgress();
     });
   });
 
-  // ---------------------------------------------------------
-  // Field-level error helpers
-  // ---------------------------------------------------------
-  function fieldWrapper(input) {
-    return input.closest(".field");
-  }
-
-  function setFieldError(input, message) {
-    const wrap = fieldWrapper(input);
-    if (!wrap) return;
-    wrap.classList.add("field-error");
-    const msgEl = wrap.querySelector(".error-msg");
-    if (msgEl) msgEl.textContent = message;
-  }
-
-  function clearFieldError(input) {
-    const wrap = fieldWrapper(input);
-    if (!wrap) return;
-    wrap.classList.remove("field-error");
-    const msgEl = wrap.querySelector(".error-msg");
-    if (msgEl) msgEl.textContent = "";
-  }
-
-  function clearAllErrors() {
-    form.querySelectorAll(".field").forEach((f) => f.classList.remove("field-error"));
-    form.querySelectorAll(".error-msg").forEach((m) => (m.textContent = ""));
-  }
-
-  // ---------------------------------------------------------
-  // Client-side validation mirroring the StudentData model
-  // ---------------------------------------------------------
   function validate(payload) {
     const errors = [];
 
@@ -127,9 +187,6 @@
     return errors;
   }
 
-  // ---------------------------------------------------------
-  // Gather form data into the exact StudentData shape
-  // ---------------------------------------------------------
   function collectPayload() {
     const fd = new FormData(form);
     return {
@@ -148,9 +205,6 @@
     };
   }
 
-  // ---------------------------------------------------------
-  // UI state switching
-  // ---------------------------------------------------------
   function showState(name) {
     [stateIdle, stateLoading, stateResult, stateError].forEach((el) => (el.hidden = true));
     ({ idle: stateIdle, loading: stateLoading, result: stateResult, error: stateError }[name]).hidden = false;
@@ -180,15 +234,38 @@
     };
   }
 
+  function animateNumber(target) {
+    const start = Number(scoreNumberEl.dataset.value || 0);
+    const startTime = performance.now();
+    const duration = 700;
+
+    const tick = (now) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const current = start + (target - start) * eased;
+      scoreNumberEl.textContent = current.toFixed(2);
+
+      if (progress < 1) {
+        requestAnimationFrame(tick);
+      } else {
+        scoreNumberEl.textContent = target.toFixed(2);
+        scoreNumberEl.dataset.value = String(target);
+      }
+    };
+
+    requestAnimationFrame(tick);
+  }
+
   function renderResult(score) {
     const clamped = Math.max(0, Math.min(10, score));
     const { label, context } = bandFor(clamped);
 
-    scoreNumberEl.textContent = score.toFixed(2);
+    animateNumber(clamped);
     scoreBandEl.textContent = label;
     scoreContextEl.textContent = context;
+    resultAnnouncer.textContent = `Final mental health score: ${clamped.toFixed(2)} out of 10.`;
 
-    // reset then animate the arc fill on next frame
     gaugeFill.style.transition = "none";
     gaugeFill.style.strokeDashoffset = String(GAUGE_ARC_LENGTH);
     requestAnimationFrame(() => {
@@ -206,10 +283,6 @@
     showState("error");
   }
 
-  // ---------------------------------------------------------
-  // Parse FastAPI / Pydantic 422 error responses into
-  // field-level messages where possible
-  // ---------------------------------------------------------
   function applyServerValidationErrors(detail) {
     if (!Array.isArray(detail)) return false;
     let matched = false;
@@ -225,9 +298,6 @@
     return matched;
   }
 
-  // ---------------------------------------------------------
-  // Submit handler
-  // ---------------------------------------------------------
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     clearAllErrors();
@@ -237,6 +307,7 @@
 
     if (clientErrors.length > 0) {
       clientErrors.forEach(([input, msg]) => input && setFieldError(input, msg));
+      updateFormProgress();
       clientErrors[0][0]?.focus?.();
       return;
     }
@@ -288,17 +359,34 @@
     }
   });
 
-  // live-clear errors as the user edits
   form.querySelectorAll("input, select").forEach((el) => {
-    el.addEventListener("input", () => clearFieldError(el));
-    el.addEventListener("change", () => clearFieldError(el));
+    el.addEventListener("input", () => {
+      clearFieldError(el);
+      updateFormProgress();
+    });
+    el.addEventListener("change", () => {
+      clearFieldError(el);
+      updateFormProgress();
+    });
   });
 
   resetBtn.addEventListener("click", () => {
+    form.reset();
+    resetStressSelection();
+    clearAllErrors();
+    updateFormProgress();
+    resultAnnouncer.textContent = "";
     showState("idle");
   });
 
   errorRetryBtn.addEventListener("click", () => {
+    form.reset();
+    resetStressSelection();
+    clearAllErrors();
+    updateFormProgress();
+    resultAnnouncer.textContent = "";
     showState("idle");
   });
+
+  updateFormProgress();
 })();
