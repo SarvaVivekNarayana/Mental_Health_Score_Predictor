@@ -338,9 +338,10 @@
   }
 
   const BANDS = {
-    strained: { rgb: "255, 107, 107", hex: "#FF6B6B" },
-    balanced: { rgb: "255, 200, 87", hex: "#FFC857" },
-    strong:   { rgb: "61, 220, 151", hex: "#3DDC97" },
+    veryLow:  { rgb: "255, 107, 107", hex: "#FF6B6B" },
+    strained: { rgb: "255, 200, 87",  hex: "#FFC857" },
+    balanced: { rgb: "47, 196, 201",  hex: "#2FC4C9" },
+    thriving: { rgb: "61, 220, 151",  hex: "#3DDC97" },
   };
 
   function setAccent(rgb) {
@@ -349,14 +350,21 @@
   }
 
   function bandFor(score) {
-    if (score < 4) {
+    if (score < 2) {
+      return {
+        key: "veryLow",
+        label: "Signal: needs care",
+        context: "Your responses point to heavy strain right now. Consider talking to someone you trust, and start with small changes to sleep and screen time.",
+      };
+    }
+    if (score < 5) {
       return {
         key: "strained",
         label: "Signal: strained",
-        context: "Your responses suggest elevated strain right now. Small shifts in sleep or screen time can go a long way.",
+        context: "Some areas of your routine look under pressure. Small shifts in sleep, activity or screen time can help.",
       };
     }
-    if (score < 7) {
+    if (score < 8) {
       return {
         key: "balanced",
         label: "Signal: balanced",
@@ -364,8 +372,8 @@
       };
     }
     return {
-      key: "strong",
-      label: "Signal: strong",
+      key: "thriving",
+      label: "Signal: thriving",
       context: "Your habits point to a well-supported, resilient baseline. Keep it up.",
     };
   }
@@ -416,7 +424,7 @@
       gaugeNeedle.style.transform = `rotate(${-90 + (clamped / 10) * 180}deg)`;
     });
 
-    setTimeout(() => burstFromGauge(BANDS[key].hex, clamped >= 7 ? 90 : 40), 900);
+    setTimeout(() => burstFromGauge(BANDS[key].hex, clamped >= 8 ? 90 : 40), 900);
   }
 
   function renderError(label, copy) {
